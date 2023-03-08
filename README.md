@@ -9,11 +9,11 @@ Classical GxE analysis can be used to detect genetic effect heterogeneity. Howev
 
 We developed SharePro for GxE analysis to reduce multiple testing burden.
 Below we showcase three scenarios of potential effect heterogeneity in a population with three environmental exposure status. 
-In setting 1, there is no effect heterogeneity and through combined analysis, the causal variant can be identified while a stratified GWAS analysis might not be well-powered. 
+In setting 1, there is no effect heterogeneity and through combined analysis, the causal variant can be identified while a stratified GWAS analysis is under-powered. 
 Through joint analysis of exposure-stratified GWAS summary statistics, we can recover this signal with SharePro.
 In setting 2, the causal variant has different effect sizes across exposure categories and combined approaches will be disadvantaged. 
-Classical GxE analysis is also not well-powered due to a high multiple testing burden. 
-With a joint approach, SharePro can accurately identify the causal signal and detect effect heterogeneity. Setting 3 is similar to setting 2 where the joint approach are more well-powered than the combined approach.
+Classical GxE analysis is not well-powered either due to a high multiple testing burden. 
+With a joint approach, SharePro can accurately identify the causal signal and detect effect heterogeneity. Setting 3 is similar to setting 2 where the joint approach is more favorable than the combined approach.
 
 <p align="center">
   <img src="doc/SharePro_gxe_overview.png" alt="example image">
@@ -74,7 +74,7 @@ python sharepro_gxe.py \
 
 In this simulated example, we have one causal variant: rs112819506 with causal effect sizes of 0.05 and 0.02 in the exposed and unexposed group.
 
-From the output we obtained below, we have successfully identified one effect group consists of two variants rs112819506 and rs138116565 with weights of 0.7334 and 0.2541. Since those two variants have a Pearson correlation of 0.99, they are nearly statistically indistinguishable.
+From the output we obtained below, we have successfully identified one effect group consisting of two variants rs112819506 and rs138116565 with weights of 0.7334 and 0.2541. Since those two variants have a Pearson correlation of 0.99, they are nearly statistically indistinguishable.
 Based on the estimated effect size of 0.0533 and 0.0205, a GxE p-value of 2.06e-04 was derived for charactering effect heterogeneity for this effect group.
 
 ```
@@ -145,7 +145,7 @@ rs188970225	1.1552	-0.4448	4.49e-04
 rs814535	-1.8894	1.6999	5.27e-04
 ```
 
-3. **hyperparameters summary** (h2) file adds two additional columns in the summary file to record the heritability and effect size variance estimates used in the colocalization algorithms.
+3. **hyperparameters summary** (h2) file adds two additional columns in the summary file to record the heritability and effect size variance estimates used in the algorithm.
 
 ```
 $> cat CL.h2 
