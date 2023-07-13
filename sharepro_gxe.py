@@ -3,7 +3,7 @@ import argparse
 import os
 import numpy as np
 from scipy.special import softmax, expit
-from scipy.stats import chi2, entropy, combine_pvalues
+from scipy.stats import chi2, entropy
 
 
 def title():
@@ -19,20 +19,20 @@ def get_HESS_h2_z(LD, Z, N, ptLD=0.2, ptp=1e-5):
     zsquare = Z ** 2
     idx_retain = []
     idx_exclude = [i for i in range(len(Z))]
-    while len(idx_exclude) > 0:
+    while len(idx_exclude) > 0:  # P + T
         maxid = idx_exclude[np.argmax(zsquare[idx_exclude])]  # find the idx with smallest p-value
         pval = chi2.sf(zsquare[maxid], 1)
         idx_retain.append(maxid)
         idx_exclude = [i for i in idx_exclude if i not in np.where(np.abs(LD[maxid, :]) > ptLD)[0]]
         if pval > ptp:
             break
-    Indidx = np.sort(idx_retain)  # obtain independent signals through P + T
+    Indidx = np.sort(idx_retain)  # obtain independent signals
     P = len(Indidx)
     LD_id = LD[np.ix_(Indidx, Indidx)]
     R_inv = np.linalg.inv(LD_id)
     vec_id = Z[Indidx]
     h2_hess = (np.dot(np.dot(vec_id.transpose(), R_inv), vec_id) - P) / (N - P)
-    var_b = np.mean(zsquare[Indidx]) / N
+    var_b = np.max(zsquare[Indidx]) / N
     if h2_hess < 0.0001:
         h2_hess = 0.0001
     if h2_hess > 0.9:
@@ -127,8 +127,7 @@ class SharePro(object):
             ll, mklbeta, mkldelta, mklgamma, elbo = self.get_elbo(XX, ytX, XtX)
             if verbose:
                 print('*' * 70)
-                print(
-                    'Iteration-->{} . Likelihood: {:.1f} . KL_b: {:.1f} . KL_c: {:.1f} . KL_s: {:.1f} . ELBO: {:.1f}'.
+                print('Iteration-->{} . Likelihood: {:.1f} . KL_b: {:.1f} . KL_c: {:.1f} . KL_s: {:.1f} . ELBO: {:.1f}'.
                     format(ite, ll, mklbeta, mkldelta, mklgamma, elbo))
             if abs(elbo - loss) < eps:
                 break
@@ -147,49 +146,43 @@ class SharePro(object):
         """calculate c1*c2*s"""
         return np.prod(np.array([i.delta for i in self.SR]), axis=0)  # get shared matrix
 
-    def get_summary(self, pvalvec, clevel=0.95, pthres=1.0, eprop=1.0):
+    def get_summary(self, cthres=0.95, ethres=50):
         """get variant and effect level summary"""
-        vidx = np.argsort(-self.gamma, axis=1)
-        variantidx = [vidx[p, 0] for p in range(self.p)]
-        vgamma = np.array([self.gamma[p, vidx[p, 0]] for p in range(self.p)])
-        matdelta = self.multiply_delta()
-        mat_specific = [self.multiply_specific(i) for i in range(self.num)]
-        print('total probabilities {}'.format(sum(vgamma).round(4)))
         matidx = np.argsort(-self.gamma, axis=0)
-        etp = entropy(self.gamma, axis=0)
-        ngamma = round(sum(vgamma) - int(max(etp) > np.log(self.p) * 0.8))
-        print('entropy of posterior distribution:{}'.format(etp.round(2)))
-        topsnp, eff, eff_gamma, eff_gammasum, eff_share, eff_specific, eff_c, eff_mu, eff_tau, eff_pdiff = \
-            [], [], [], [], [], [], [], [], [], []
-        for k in np.argsort(etp)[0:ngamma]:
-            if pvalvec[matidx[0, k]] > pthres:
-                continue
-            if etp[k] > np.log(self.p) * 0.8 * eprop:
-                continue
-            tsnp = [i for i in range(self.p) if variantidx[i] == k]
-            if sum(self.gamma[tsnp, k]) < clevel:
-                continue
-            topsnp.extend(tsnp)
-            for p in range(self.p):
-                if sum(self.gamma[matidx[0:p, k], k]) / sum(self.gamma[tsnp, k]) > clevel:
-                    effk = matidx[0:p, k].tolist()
-                    effgammak = self.gamma[effk, k].round(4)
-                    effgammasumk = sum(effgammak).round(4)
-                    effgamma_n = effgammak / effgammasumk
-                    eff.append(effk)
-                    eff_gamma.append(effgammak)
-                    eff_gammasum.append(effgammasumk)
-                    eff_share.append(sum(np.multiply(matdelta[effk, k], effgamma_n)).round(4))
-                    eff_specific.append([sum(np.multiply(i[effk, k], effgamma_n)).round(4) for i in mat_specific])
-                    eff_c.append([sum(np.multiply(i.delta[effk, k], effgamma_n)).round(4) for i in self.SR])
-                    effmuk = [i.beta_mu[effk[0], k].round(4) for i in self.SR]
-                    efftauk = [i.beta_post_tau[effk[0], k].round(4) for i in self.SR]
-                    eff_mu.append(effmuk)
-                    eff_tau.append(efftauk)
-                    eff_pdiff.append(chi2.sf((effmuk[0] - effmuk[-1]) ** 2 / (1 / efftauk[0] + 1 / efftauk[-1]), 1))
-                    break
-        return variantidx, vgamma, \
-            eff, eff_gamma, eff_gammasum, eff_share, eff_specific, eff_c, eff_mu, eff_tau, eff_pdiff
+        variantidx = np.argmax(self.gamma, axis=1).tolist()
+        vgamma = np.max(self.gamma, axis=1)
+        mat_eff = np.zeros((self.p, self.k))  # effective gamma
+        mat_eff[range(self.p), variantidx] = self.gamma[range(self.p), variantidx]
+        #matdelta = self.multiply_delta()
+        #mat_specific = [self.multiply_specific(i) for i in range(self.num)]
+        csum = mat_eff.sum(axis=0).round(2)
+        print("Attainable coverage for effect groups: {}".format(csum))  # statistical evidence
+        eff = {}
+        eff_gamma = {}
+        eff_mu = {}
+        #eff_share = {}
+        #eff_specific = {}
+        #eff_pdiff = {}
+        #eff_tau = {}
+        #eff_c = {}
+        for k in range(self.k):
+            if csum[k] > cthres:
+                if entropy(mat_eff[:, k]) < np.log(ethres):
+                    for p in range(self.p):
+                        if np.sum(mat_eff[matidx[0:p, k], k]) > cthres * csum[k] or mat_eff[matidx[p, k], k] < 0.01:
+                            eff[k] = matidx[0:p, k].tolist()
+                            eff_gamma[k] = mat_eff[eff[k], k].round(4).tolist()
+                            effmuk = [i.beta_mu[eff[k][0], k].round(4) for i in self.SR]
+                            eff_mu[k] = effmuk
+                            #effgamma_n = eff_gamma[k] / csum[k]
+                            #eff_share[k] = sum(np.multiply(matdelta[eff[k], k], effgamma_n)).round(4)
+                            #eff_specific[k] = [sum(np.multiply(i[eff[k], k], effgamma_n)).round(4) for i in mat_specific]
+                            #eff_c[k] = [sum(np.multiply(i.delta[eff[k], k], effgamma_n)).round(4) for i in self.SR]
+                            #efftauk = [i.beta_post_tau[eff[k][0], k].round(4) for i in self.SR]
+                            #eff_pdiff[k] = chi2.sf((effmuk[0] - effmuk[-1]) ** 2 / (1 / efftauk[0] + 1 / efftauk[-1]), 1)
+                            #eff_tau[k] = efftauk
+                            break
+        return variantidx, vgamma, eff, eff_gamma, eff_mu
 
 
 def zld(args):
@@ -202,20 +195,17 @@ def zld(args):
         zs = zfile.split(',')
         lds = ldfile.split(',')
         nums = len(zs)
-        z = pd.concat(
-            [pd.read_csv(os.path.join(args.zdir, zs[i]), sep='\t', header=None, index_col=0) for i in range(nums)],
-            axis=1, join='inner')
+        z = pd.concat([pd.read_csv(os.path.join(args.zdir, zs[i]), sep='\t', header=None, index_col=0)
+                       for i in range(nums)], axis=1, join='inner')
         ldmat = [pd.read_csv(os.path.join(args.zdir, lds[i]), sep='\s+', header=None).values for i in range(nums)]
         assert len(z) == len(ldmat[0])
         assert all(len(i) == len(ldmat[0]) for i in ldmat)
         Z = z.values
-        zpval = chi2.sf(Z ** 2, 1)
-        pvalvec = [min(min(zpval[i]), combine_pvalues(zpval[i], method='fisher')[1]) for i in range(len(zpval))]
         XX = np.ones(Z.shape) * args.N
         ytX = Z * np.sqrt(args.N)
         XtX = [i * j for i, j in zip(ldmat, args.N)]
-        hess, varb = zip(
-            *[get_HESS_h2_z(ldmat[i], Z[:, i], args.N[i], ptLD=args.ptLD, ptp=args.ptp) for i in range(nums)])
+        hess, varb = zip(*[get_HESS_h2_z(ldmat[i], Z[:, i], args.N[i], ptLD=args.ptLD, ptp=args.ptp)
+                           for i in range(nums)])
         if args.hess is not None:
             h2 = args.hess
         else:
@@ -226,36 +216,33 @@ def zld(args):
             b2 = max(varb)
         model = SharePro(Z.shape[0], args.K, XX, h2, b2, sigma=args.sigma)
         model.train(XX, ytX, XtX, verbose=args.verbose)
-        variantidx, vgamma, eff, eff_gamma, eff_gammasum, eff_share, eff_specific, eff_c, eff_mu, eff_tau, eff_pdiff = \
-            model.get_summary(pvalvec, clevel=args.clevel, pthres=args.pthres, eprop=args.eprop)
+        variantidx, vgamma, eff, eff_gamma, eff_mu = model.get_summary(cthres=args.cthres, ethres=args.ethres)
+        eff_pdiff = {key: chi2.sf((val[0] - val[-1]) ** 2 / (1 / args.N[0] + 1 / args.N[-1]), 1)
+                     for key, val in eff_mu.items()}
         df_z = z.reset_index().copy()
         df_z.columns = ['SNP'] + zs
         df_z['vProb'] = ['{:.2e}'.format(i) for i in vgamma]
         df_z.to_csv(os.path.join(args.save, "{}.snp".format(zfile.replace(',', '_'))),
                     sep='\t', header=True, index=False)
-        for e in range(len(eff)):
+        for e in eff:
             mcs_idx = [z.index[j] for j in eff[e]]
             print('The {}-th effect contains effective variants:'.format(e))
             print('causal variants: {}'.format(mcs_idx))
             print('variant probabilities for this effect group: {}'.format(eff_gamma[e]))
-            print('shared probability for this effect group: {}'.format(eff_share[e]))
-            print('specific probabilities for this effect group: {}'.format(eff_specific[e]))
-            print('probabilities of effect for traits: {}'.format(eff_c[e]))
             print('causal effect sizes for traits: {}'.format(eff_mu[e]))
             print('GxE p-value: {:.2e}'.format(eff_pdiff[e]))
             print()
-        ldlists.at[ite, 'h2'] = h2
-        ldlists.at[ite, 'varb'] = b2
-        allcs = pd.DataFrame({"cs": ['/'.join(z.index[i]) for i in eff],
-                              "totalProb": eff_gammasum,
-                              "p_diff": ['{:.2e}'.format(i) for i in eff_pdiff],
-                              "beta": [','.join([str(j) for j in i]) for i in eff_mu],
-                              "share": eff_share,
-                              "specific": [','.join([str(j) for j in i]) for i in eff_specific],
-                              "causalProb": [','.join([str(j) for j in i]) for i in eff_c],
-                              "variantProb": ['/'.join([str(j) for j in i]) for i in eff_gamma]})
-        allcs.to_csv(os.path.join(args.save, "{}.cs".format(zfile.replace(',', '_'))), sep='\t', header=True,
-                     index=False)
+        ldlists.at[ite, 'h2'] = '{:.2e}'.format(h2)
+        ldlists.at[ite, 'varb'] = '{:.2e}'.format(b2)
+        allcs = pd.DataFrame.from_dict([eff, eff_pdiff, eff_mu, eff_gamma]).transpose()
+        csz = [z.iloc[i[0], ].tolist() for i in allcs[0]]
+        allcs['cs'] = ['/'.join([z.index[j] for j in i]) for i in allcs[0]]
+        allcs['zscore'] = [','.join([str(i) for i in i]) for i in csz]
+        allcs['p_diff'] = ['{:.2e}'.format(i) for i in allcs[1]]
+        allcs['beta'] = [','.join([str(j) for j in i]) for i in allcs[2]]
+        allcs['variantProb'] = ['/'.join([str(j) for j in i]) for i in allcs[3]]
+        allcs[['cs', 'p_diff', 'beta', 'variantProb']].\
+            to_csv(os.path.join(args.save, "{}.cs".format(zfile.replace(',', '_'))), sep='\t', header=True, index=False)
     ldlists.to_csv(os.path.join(args.save, "{}.h2".format(args.prefix)), sep='\t', header=True, index=False)
 
 
@@ -271,13 +258,11 @@ parser.add_argument('--K', type=int, default=None, help='largest number of causa
 parser.add_argument('--sigma', type=float, default=1e-2,
                     help='prior probabilities for effect groups shared among exposure categories')
 parser.add_argument('--hess', type=float, default=None, help='heritability estimates, HESS used as default')
-parser.add_argument('--varb', type=float, default=None,
-                    help='effect size variance estimates, HESS used as default')
+parser.add_argument('--varb', type=float, default=None, help='effect size variance estimates, HESS used as default')
 parser.add_argument('--ptLD', type=float, default=0.2, help='P+T LD cutoff')
 parser.add_argument('--ptp', type=float, default=1e-5, help='P+T p value cutoff')
-parser.add_argument('--clevel', type=float, default=0.95, help='effect credible level')
-parser.add_argument('--pthres', type=float, default=1.0, help='p value cutoff for calling effect group')
-parser.add_argument('--eprop', type=float, default=1.0, help='entropy proportion for calling effect group')
+parser.add_argument('--cthres', type=float, default=0.95, help='coverage level for credible sets')
+parser.add_argument('--ethres', type=float, default=50.0, help='entropy level for credible sets')
 
 args = parser.parse_args()
 title()

@@ -9,10 +9,10 @@ Classical GxE analysis can be used to detect genetic effect heterogeneity. Howev
 
 We developed SharePro for GxE analysis to reduce multiple testing burden.
 Below we showcase three scenarios of potential effect heterogeneity in a population with three environmental exposure status. 
-In setting 1, there is no effect heterogeneity and through combined analysis, the causal variant can be identified while a stratified GWAS analysis is under-powered. 
+In setting 1, there is no effect heterogeneity and through combined analysis, the causal variant can be identified while a stratified GWAS is under-powered. 
 Through joint analysis of exposure-stratified GWAS summary statistics, we can recover this signal with SharePro.
 In setting 2, the causal variant has different effect sizes across exposure categories and combined approaches will be disadvantaged. 
-Classical GxE analysis is not well-powered either due to a high multiple testing burden. 
+Classical GxE analysis is also under-powered due to a high multiple testing burden. 
 With a joint approach, SharePro can accurately identify the causal signal and detect effect heterogeneity. Setting 3 is similar to setting 2 where the joint approach is more favorable than the combined approach.
 
 <p align="center">
@@ -57,25 +57,25 @@ SharePro takes in a summary file with path to z-score files and LD files, exposu
 
 We use `--zld` to indicate path to the summary file and `--zdir` to indicate path to zscore files.
 Additionally, we specify the sample sizes of each exposure categories with `--N`.
-We use `--save` to specify path to save result and `--prefix` to specify prefix of output files. We set the max number of causal signals as 10 with `--K`.
+We use `--save` to specify path to save result and `--prefix` to specify prefix of output files. We set the max number of causal signals as 5 with `--K`.
 
 ```
-python sharepro_gxe.py \
+python3 sharepro_gxe.py \
 --zld dat/CL.zld.txt \
 --zdir dat \
 --N 25000 25000 \
 --save res \
 --prefix CL \
 --verbose \
---K 10
+--K 5
 ```
 
 ## Output interpretation
 
 In this simulated example, we have one causal variant: rs112819506 with causal effect sizes of 0.05 and 0.02 in the exposed and unexposed group.
 
-From the output we obtained below, we have successfully identified one effect group consisting of two variants rs112819506 and rs138116565 with weights of 0.7334 and 0.2541. Since those two variants have a Pearson correlation of 0.99, they are nearly statistically indistinguishable.
-Based on the estimated effect size of 0.0533 and 0.0205, a GxE p-value of 2.06e-04 was derived for charactering effect heterogeneity for this effect group.
+From the output we obtained below, we have successfully identified one effect group consisting of two variants rs112819506 and rs138116565 with weights of 0.7345 and 0.2536. Since those two variants have a Pearson correlation of 0.99, they are nearly statistically indistinguishable.
+Based on the estimated effect size of 0.0538 and 0.0207, a GxE p-value of 2.15e-04 was derived for this effect group.
 
 ```
 **********************************************************************
@@ -88,27 +88,23 @@ LD list with 1 LD blocks loaded
 
 processing C21.z,L21.z
 **********************************************************************
-Iteration-->0 . Likelihood: 42.4 . KL_b: -4.7 . KL_c: -12.6 . KL_s: 69.7 . ELBO: 94.8
+Iteration-->0 . Likelihood: 42.3 . KL_b: -4.9 . KL_c: -12.3 . KL_s: 31.2 . ELBO: 56.4
 **********************************************************************
-Iteration-->1 . Likelihood: 42.2 . KL_b: -4.6 . KL_c: -12.4 . KL_s: 69.8 . ELBO: 95.0
+Iteration-->1 . Likelihood: 42.2 . KL_b: -4.8 . KL_c: -12.1 . KL_s: 31.3 . ELBO: 56.5
 **********************************************************************
-Iteration-->2 . Likelihood: 42.2 . KL_b: -4.6 . KL_c: -12.4 . KL_s: 69.8 . ELBO: 95.0
+Iteration-->2 . Likelihood: 42.2 . KL_b: -4.8 . KL_c: -12.1 . KL_s: 31.3 . ELBO: 56.6
 **********************************************************************
-Iteration-->3 . Likelihood: 42.2 . KL_b: -4.6 . KL_c: -12.4 . KL_s: 69.8 . ELBO: 95.0
-total probabilities 2.0396
-entropy of posterior distribution:[0.65 7.67 7.67 7.68 7.68 7.68 7.68 7.68 7.69 7.69]
+Iteration-->3 . Likelihood: 42.2 . KL_b: -4.8 . KL_c: -12.1 . KL_s: 31.3 . ELBO: 56.6
+Attainable coverage for effect groups: [1.   0.25 0.02 0.01 0.75]
 The 0-th effect contains effective variants:
 causal variants: ['rs112819506', 'rs138116565']
-variant probabilities for this effect group: [0.7334 0.2541]
-shared probability for this effect group: 0.9399
-specific probabilities for this effect group: [0.0601, 0.0]
-probabilities of effect for traits: [1.0, 0.9399]
-causal effect sizes for traits: [0.0533, 0.0205]
-GxE p-value: 2.06e-04
+variant probabilities for this effect group: [0.7345, 0.2536]
+causal effect sizes for traits: [0.0538, 0.0207]
+GxE p-value: 2.15e-04
 ```
 
 We can additionally visualize both the raw GWAS summary statistics (A) and the GxE analysis results (B,D) in this locus.
-Specifically, multiple testing burden in classical GxE detection reduced the power for characterizing genetic effect heterogeneity (B) while SharePro can identify the causal signal first, which greatly increases power for GxE analysis (D).
+Specifically, multiple testing burden reduced the power for GxE analysis (B) while SharePro can fine-map the causal signal from exposure stratified GWAS summary statistics, which greatly increases power for GxE analysis (D).
 
 <p align="center">
   <img src="doc/SharePro_gxe_example.png" alt="example image">
@@ -119,36 +115,32 @@ Specifically, multiple testing burden in classical GxE detection reduced the pow
 ## Output files
 
 1. **effect group summary** (cs) file contains seven columns: 
-`cs` for variant representation in effect groups; 
-`totalProb` for overall probability weights for effect groups; 
-`p_diff` for GxE p-value;
-`beta` for causal effect sizes;
-`share` for effect group being causal in all exposure categories;
-`specific` for effect group being causal for specific exposure category;
-`causalProb` for effect group being causal for each exposure category; 
+`cs` for variant representations in effect groups; 
+`p_diff` for GxE p-values;
+`beta` for effect size estimates;
 `variantProb` for variant representation weight in effect groups.
 
 ```
-$> cat C21.z_L21.z.cs 
-cs	totalProb	p_diff	beta	share	specific	causalProb	variantProb
-rs112819506/rs138116565	0.9874	2.06e-04	0.0533,0.0205	0.9399	0.0601,0.0	1.0,0.9399	0.7333/0.2541
+$> cat res/C21.z_L21.z.cs 
+cs	p_diff	beta	variantProb
+rs112819506/rs138116565	2.15e-04	0.0538,0.0207	0.7345/0.2536
 ```
 
 2. **variant summary** (snp) file contains zscores and one additional column of posterior inclusion probabilities.
 
 ```
-$> head -5 C21.z_L21.z.snp
+$> head -5 res/C21.z_L21.z.snp
 SNP	C21.z	L21.z	vProb
-rs111073422	0.6018	0.0611	4.41e-04
-rs10414006	-1.9531	1.83	5.59e-04
-rs188970225	1.1552	-0.4448	4.49e-04
-rs814535	-1.8894	1.6999	5.27e-04
+rs111073422	0.6018	0.0611	4.16e-04
+rs10414006	-1.9531	1.83	5.90e-04
+rs188970225	1.1552	-0.4448	4.33e-04
+rs814535	-1.8894	1.6999	5.47e-04
 ```
 
 3. **hyperparameters summary** (h2) file adds two additional columns in the summary file to record the heritability and effect size variance estimates used in the algorithm.
 
 ```
-$> cat CL.h2 
+$> cat res/CL.h2 
 z	ld	h2	varb
-C21.z,L21.z	Locus1.ld,Locus1.ld	0.00044065478459138374	0.001690981489
+C21.z,L21.z	Locus1.ld,Locus1.ld	4.41e-04	2.98e-03
 ```
