@@ -259,7 +259,7 @@ parser.add_argument('--N', type=int, default=None, nargs='+', help='sample sizes
 parser.add_argument('--save', type=str, default=None, help='path to save results', required=True)
 parser.add_argument('--prefix', type=str, default=None, help='prefix for result files', required=True)
 parser.add_argument('--verbose', action="store_true", help='options for displaying more information')
-parser.add_argument('--K', type=int, default=None, help='largest number of causal signals per region', required=True)
+parser.add_argument('--K', type=int, default=5, help='largest number of causal signals per region')
 parser.add_argument('--sigma', type=float, default=1e-2,
                     help='prior probabilities for effect groups shared among exposure categories')
 parser.add_argument('--hess', type=float, default=None, help='heritability estimates, HESS used as default')
