@@ -1,2 +1,0 @@
-z	ld
-C21.z,L21.z	Locus1.ld,Locus1.ld
