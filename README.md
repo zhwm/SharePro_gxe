@@ -46,29 +46,20 @@ python sharepro_gxe.py -h
 
 Example input files from simulation studies are included in the [dat](dat/) directory.
 
-SharePro takes in a summary file with path to z-score files and LD files, exposure stratified z-scores files, LD files as inputs.
+1. the **exposure stratified summary statistic files** that contain at least four columns: SNP/N/BETA/SE. Examples are available at [dat/C21.txt](dat/C21.txt) and [dat/L21.txt](dat/L21.txt). Multiple exposure categories are allowed.
 
-1. the **summary file** contains two mandatory columns: names of z-score file and ld files. Multiple files are allowed and should be separated by comma. An example can be found at [dat/CL.zld.txt](dat/CL.zld.txt).
-
-2. the **exposure stratified zscore files** that contain two mandatory columns: variant IDs and z-scores. Examples are available at [dat/C21.z](dat/C21.z) and [dat/L21.z](dat/L21.z). Multiple exposure categories are allowed.
-
-3. the **LD files** that contain correlation coefficient matrix. **Please make sure the REF/ALT alleles used in calculating LD are the same as the GWAS study!!** An example can be found at [dat/Locus1.ld](dat/Locus1.ld) and a working script for matching raw GWAS summary statistics and PLINK bim file is provided [here](match_bim_ss.py).
+3. the **LD files** that contain correlation coefficient matrix. **Please make sure the REF/ALT alleles used in calculating LD are the same as the GWAS study!!** An example can be found at [dat/Locus1.ld](dat/Locus1.ld).
 
 ## Usage examples
 
-We use `--zld` to indicate path to the summary file and `--zdir` to indicate path to zscore files.
-Additionally, we specify the sample sizes for exposure categories with `--N`.
-We use `--save` to specify path to save result and `--prefix` to specify prefix of output files. We set the max number of causal signals as 5 with `--K`.
+We use `--z` and  `--ld` to indicate path to the summary statistic files and the LD file.
+We use `--save` to specify path to save result.
 
 ```
 python sharepro_gxe.py \
---zld dat/CL.zld.txt \
---zdir dat \
---N 25000 25000 \
---save res \
---prefix CL \
---verbose \
---K 5
+--z dat/C21.txt dat/L21.txt \
+--ld dat/Locus1.ld \
+--save dat/CL21
 ```
 
 ## Output interpretation
@@ -79,29 +70,30 @@ From the output we obtained below, we have successfully identified one effect gr
 Based on the estimated effect size of 0.0538 and 0.0207, a GxE p-value of 2.15e-04 was derived for this effect group.
 
 ```
-**********************************************************************
-* SharePro for joint fine-mapping and GxE analysis                   *
-* Version 1.0.0                                                      *
-* (C) Wenmin Zhang (wenmin.zhang@mail.mcgill.ca)                     *
-**********************************************************************
-Using locus fine-mapping mode with --zld
-LD list with 1 LD blocks loaded
-
-processing C21.z,L21.z
-**********************************************************************
-Iteration-->0 . Likelihood: 42.3 . KL_b: -4.9 . KL_c: -12.3 . KL_s: 31.2 . ELBO: 56.4
-**********************************************************************
-Iteration-->1 . Likelihood: 42.2 . KL_b: -4.8 . KL_c: -12.1 . KL_s: 31.3 . ELBO: 56.5
-**********************************************************************
-Iteration-->2 . Likelihood: 42.2 . KL_b: -4.8 . KL_c: -12.1 . KL_s: 31.3 . ELBO: 56.6
-**********************************************************************
-Iteration-->3 . Likelihood: 42.2 . KL_b: -4.8 . KL_c: -12.1 . KL_s: 31.3 . ELBO: 56.6
-Attainable coverage for effect groups: [1.   0.25 0.02 0.01 0.75]
-The 0-th effect contains effective variants:
-causal variants: ['rs112819506', 'rs138116565']
-variant probabilities for this effect group: [0.7345, 0.2536]
-causal effect sizes for traits: [0.0538, 0.0207]
-GxE p-value: 2.15e-04
+2024-06-03 20:22:38 - z: ['dat/C21.txt', 'dat/L21.txt']
+2024-06-03 20:22:38 - ld: dat/Locus1.ld
+2024-06-03 20:22:38 - save: dat/CL21
+2024-06-03 20:22:38 - sigma: 0.99
+2024-06-03 20:22:38 - K: 10
+2024-06-03 20:22:38 - maxite: 100
+2024-06-03 20:22:38 - eps: 0.01
+2024-06-03 20:22:38 - ubound: 10000000000.0
+2024-06-03 20:22:38 - cthres: 0.95
+2024-06-03 20:22:38 - pthres: 0.8
+2024-06-03 20:22:38 - **********************************************************************
+2024-06-03 20:22:38 - Iteration-->0 . Likelihood: 47.5 . KL_b: -25.9 . KL_c: -0.3 . KL_s: 65.8 . ELBO: 87.1
+2024-06-03 20:22:38 - **********************************************************************
+2024-06-03 20:22:38 - Iteration-->1 . Likelihood: 46.7 . KL_b: -25.8 . KL_c: -0.3 . KL_s: 66.8 . ELBO: 87.5
+2024-06-03 20:22:39 - **********************************************************************
+2024-06-03 20:22:39 - Iteration-->2 . Likelihood: 46.6 . KL_b: -25.7 . KL_c: -0.3 . KL_s: 67.0 . ELBO: 87.6
+2024-06-03 20:22:39 - **********************************************************************
+2024-06-03 20:22:39 - Iteration-->3 . Likelihood: 46.6 . KL_b: -25.7 . KL_c: -0.3 . KL_s: 67.1 . ELBO: 87.7
+2024-06-03 20:22:39 - **********************************************************************
+2024-06-03 20:22:39 - Iteration-->4 . Likelihood: 46.6 . KL_b: -25.7 . KL_c: -0.3 . KL_s: 67.1 . ELBO: 87.7
+2024-06-03 20:22:39 - Attainable coverage for effect groups: [1.   0.89 0.   0.   0.11 0.   0.   0.   0.   0.  ]
+2024-06-03 20:22:39 - The 0-th effect group contains effective variants:
+2024-06-03 20:22:39 - causal variants: ['rs112819506', 'rs138116565']
+2024-06-03 20:22:39 - variant probabilities for this effect group: [0.7293, 0.2573]
 ```
 
 We can additionally visualize both the raw GWAS summary statistics (A) and the GxE analysis results (B,D) in this locus.
@@ -115,36 +107,10 @@ In this example, the association test in the exposed and the unexposed categorie
 
 ## Output files
 
-1. the **effect group summary** (cs) file contains four columns: 
-`cs` for variant representations in effect groups; 
-`p_diff` for GxE p-values;
-`beta` for effect size estimates;
-`variantProb` for variant representation weight in effect groups.
+1. the **log** file. The log file for the example above has been provided at [dat/CL21.sharepro.gxe.log](dat/CL21.sharepro.gxe.log)
 
-```
-$> cat res/C21.z_L21.z.cs 
-cs	p_diff	beta	variantProb
-rs112819506/rs138116565	2.15e-04	0.0538,0.0207	0.7345/0.2536
-```
+2. the **summary** file contains the posterior inclusion probabilities and credible sets information. The summary file for the example above has been provided at [dat/CL21.sharepro.gxe.txt](dat/CL21.sharepro.gxe.txt)
 
-2. the **variant summary** (snp) file contains zscores and one additional column of posterior inclusion probabilities.
-
-```
-$> head -5 res/C21.z_L21.z.snp
-SNP	C21.z	L21.z	vProb
-rs111073422	0.6018	0.0611	4.16e-04
-rs10414006	-1.9531	1.83	5.90e-04
-rs188970225	1.1552	-0.4448	4.33e-04
-rs814535	-1.8894	1.6999	5.47e-04
-```
-
-3. the **hyperparameters summary** (h2) file adds two additional columns to the summary file to record the heritability and effect size variance estimates.
-
-```
-$> cat res/CL.h2 
-z	ld	h2	varb
-C21.z,L21.z	Locus1.ld,Locus1.ld	4.41e-04	2.98e-03
-```
 
 ## Citations
 
